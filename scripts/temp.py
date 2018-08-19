@@ -17,11 +17,14 @@ import sys
 # Gets the args passed without the file name
 args = sys.argv[1:]
 
+if len(args) != 2:
+    raise Exception('Must provide two arguments')
+
 # The URL we are posting the data to
 post_url = args[0]
 
 # The number of temperature samples to take and average
-samples = int(args[1] or 10)
+samples = int(args[1])
 
 # Number of seconds to wait between samples
 wait_for = 1
