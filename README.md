@@ -2,6 +2,12 @@
 
 Library that helps with logging aquarium metrics
 
+# Dependencies
+
+This library depends on [w1thermsensor](https://github.com/timofurrer/w1thermsensor). Follow the README to set up the w1thermsensor library for the raspberry pi.
+
+`pip install w1thermsensor`
+
 ## Temperature Monitoring
 
 ### Automating
@@ -17,6 +23,7 @@ Follow steps [here](https://learn.adafruit.com/adafruits-raspberry-pi-lesson-11-
 Create a Google Spreadsheet, rename the first sheet to "Temperature", and add the following columns to the first row:
 
 * Date
+* Sensor
 * C°
 * F°
 
@@ -26,7 +33,7 @@ Create a [Zapier](https://zapier.com/) account and create a 2 step Zap.
 
 The first step (Trigger) needs to be a webhook. Create the webhook, grab the URL, and run the following command from the project directory to pull in a sample post.
 
-`python ./scripts/temp.py [URL] 1`
+`python ./scripts/temp.py [URL]`
 
 After the command is run, return to Zapier and click the "Refresh" button to pull in the sample data.
 
@@ -36,6 +43,6 @@ Once that has been done, the second step (Action) needs to be setup with the Goo
 
 Create a cronjob with the following (replace [URL] with the webhook URL from Zapier).
 
-`*/5 * * * * python /home/pi/Desktop/tankbro/scripts/temp.py [URL] 10 >/dev/null 2>&1`
+`*/10 * * * * python /home/pi/Desktop/tankbro/scripts/temp.py [URL] >/dev/null 2>&1`
 
-This will run the temperature monitoring script that will update the Google Sheet every 5 minutes.
+This will run the temperature monitoring script that will update the Google Sheet every 10 minutes.

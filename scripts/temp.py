@@ -1,85 +1,35 @@
-# Temp reading code taken from https://learn.adafruit.com/adafruits-raspberry-pi-lesson-11-ds18b20-temperature-sensing/software
-#
-# Reads the C and F values from the temperature probe and posts the values
-# along with the current date to a given URL.
-#
-# Example: python temp.py https://webhook.site/#/asdfasdf 10
-
-import os
-import glob
-import time
+from w1thermsensor import W1ThermSensor
 import datetime
-import subprocess
-import requests
 import sys
+import requests
 
-# Get the args passed to the script
 # Gets the args passed without the file name
 args = sys.argv[1:]
 
-if len(args) != 2:
-    raise Exception('Must provide two arguments')
+# If no argument is provided, raise an exception
+if len(args) != 1:
+    raise Exception('Must provide the URL to send temps to')
 
 # The URL we are posting the data to
 post_url = args[0]
 
-# The number of temperature samples to take and average
-samples = int(args[1])
+# Set the current date time
+date = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-# Number of seconds to wait between samples
-wait_for = 1
+# Convert Celsius to Fahrenheit
+def c_to_f(c):
+    f = c * 9.0 / 5.0 + 32.0
+    return f
 
-os.system('modprobe w1-gpio')
-os.system('modprobe w1-therm')
-
-base_dir = '/sys/bus/w1/devices/'
-device_folder = glob.glob(base_dir + '28*')[0]
-device_file = device_folder + '/w1_slave'
-
-def read_temp_raw():
-        catdata = subprocess.Popen(['cat',device_file], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        out,err = catdata.communicate()
-        out_decode = out.decode('utf-8')
-        lines = out_decode.split('\n')
-        return lines
-
-def read_temp():
-    lines = read_temp_raw()
-    while lines[0].strip()[-3:] != 'YES':
-        time.sleep(0.2)
-        lines = read_temp_raw()
-    equals_pos = lines[1].find('t=')
-    if equals_pos != -1:
-        temp_string = lines[1][equals_pos+2:]
-        temp_c = float(temp_string) / 1000.0
-        temp_f = temp_c * 9.0 / 5.0 + 32.0
-        return temp_c, temp_f
-
-def average_samples(samples):
-    average = 0
-    sum = 0
-    for n in samples:
-        sum = sum + n
-    return format(sum / len(samples), '.2f')
-
-def send(c, f):
-    date = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    json = {"date": date, "C": c, "F": f }
+# Send the data to the webhook
+# example: {"date": "2018-08-19 12:00:00", "sensor": "00xxxxxx", "c": 24.38, "f": 75.88 }
+def send(sensor, c):
+    f = c_to_f(c)
+    json = {"date": date, "sensor": sensor, "c": c, "f": f }
     r = requests.post(post_url, json=json)
     r.status_code
+    print("Sensor %s temperature, C=%.2f F=%.2f" % (sensor, c, f))
 
-i = 0
-temp_f = []
-temp_c = []
-while i < samples:
-        c, f = read_temp()
-        temp_c.append(c)
-        temp_f.append(f)
-        time.sleep(wait_for)
-        i += 1
-
-c = average_samples(temp_c)
-f = average_samples(temp_f)
-
-print(c, f)
-send(c, f)
+# Loop through the sensors and send the data
+for sensor in W1ThermSensor.get_available_sensors():
+    send(sensor.id, sensor.get_temperature())
